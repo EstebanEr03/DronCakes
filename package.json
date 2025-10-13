@@ -1,0 +1,14 @@
+{
+  "name": "droncakes",
+  "version": "1.0.0",
+  "description": "Sistema de repostería con drones",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "test": "echo \"(simulación de pruebas automáticas)\""
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
