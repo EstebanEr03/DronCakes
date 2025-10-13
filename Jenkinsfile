@@ -10,7 +10,7 @@ pipeline {
         stage('Clonar Repositorio') {
             steps {
                 echo '📥 Clonando código desde GitHub...'
-                git branch: 'main', credentialsId: 'git-credentials', url: 'https://github.com/EstebanEr03/droncakes.git'
+                git branch: 'main', credentialsId: 'git-credentials', url: 'https://github.com/EstebanEr03/DronCakes.git'
             }
         }
 
@@ -38,7 +38,7 @@ pipeline {
         stage('Empaquetar Resultados') {
             steps {
                 echo '📦 Empaquetando artefactos...'
-                bat 'zip -r droncakes_build.zip src'
+                bat 'powershell Compress-Archive -Path src -DestinationPath droncakes_build.zip -Force'
                 archiveArtifacts artifacts: 'droncakes_build.zip', fingerprint: true
             }
         }
