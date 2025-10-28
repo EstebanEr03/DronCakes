@@ -480,36 +480,34 @@ Approval Required: ${env.APPROVAL_REQUIRED == 'true' ? '✅' : '❌'}
                 - Security: npm audit ✓
                 """
                 
-                // Send Slack notification with pipeline result
-                def color = status == 'SUCCESS' ? 'good' : (status == 'UNSTABLE' ? 'warning' : 'danger')
+                // Send Slack notification using credentials
+                def SLACK_WEBHOOK = credentials('slack-webhook-url')
                 def slackMessage = """
-Pipeline ${status} ${emoji}
-
-*Branch:* ${env.CURRENT_BRANCH}
-*Environment:* ${environment}
-*Duration:* ${currentBuild.durationString}
-*Build URL:* ${env.BUILD_URL}
+*${emoji} Pipeline ${status} - DronCakes CI/CD*
+Branch: *${env.BRANCH_NAME ?: 'main'}*
+Environment: *${environment}*
+Build: #${env.BUILD_NUMBER}
+Duration: ${currentBuild.durationString}
+URL: ${env.BUILD_URL}
 
 Quality Summary:
 • Code Quality: ESLint ✓
-• Unit Tests: Jest ✓  
+• Unit Tests: Jest ✓
 • Integration Tests: ✓
 • Security: npm audit ✓
                 """.trim()
-                
-                // Send Slack notification - ALWAYS
-                echo """
-                ===========================================
-                📱 SLACK NOTIFICATION - ${status}
-                ===========================================
-                ${slackMessage}
-                
-                Branch: ${env.CURRENT_BRANCH}
-                Build: #${env.BUILD_NUMBER}
-                Commit: ${env.GIT_COMMIT_SHORT}
-                Environment: ${environment}
-                ===========================================
-                """
+
+                // Enviar mensaje a Slack
+                try {
+                    bat """
+                    curl -X POST -H "Content-type: application/json" ^
+                    --data "{\\"text\\": \\"${slackMessage.replace('"', '\\"')}\\"}" ^
+                    ${SLACK_WEBHOOK}
+                    """
+                    echo "✅ Slack notification sent successfully"
+                } catch (Exception e) {
+                    echo "⚠️ Failed to send Slack notification: ${e.message}"
+                }
             }
         }
         
@@ -525,34 +523,30 @@ Quality Summary:
                     echo "Artifact archiving completed with some issues: ${e.message}"
                 }
                 
-                // Send success notification to Slack
+                // Send additional success notification to Slack
+                def SLACK_WEBHOOK = credentials('slack-webhook-url')
                 def successMessage = """
-🎊 *DEPLOYMENT SUCCESSFUL!* 🎊
+� *SUCCESS! DronCakes Pipeline Completed* 🎉
 
-The DronCakes pipeline completed successfully!
+✅ All tests passed and deployment completed successfully.
+Branch: *${env.BRANCH_NAME ?: 'main'}*
+Environment: *${env.DEPLOY_ENV ?: 'none'}*
+Build: #${env.BUILD_NUMBER}
+Duration: ${currentBuild.durationString}
 
-*Branch:* ${env.CURRENT_BRANCH}
-*Environment:* ${env.DEPLOY_ENV ?: 'none'}
-*Build:* #${env.BUILD_NUMBER}
-*Duration:* ${currentBuild.durationString}
-
-✅ All quality gates passed!
 🚀 Ready for production!
                 """.trim()
-                
-                // Send Slack notification - SUCCESS
-                echo """
-                ===========================================
-                📱 SLACK NOTIFICATION - SUCCESS
-                ===========================================
-                ${successMessage}
-                
-                Branch: ${env.CURRENT_BRANCH}
-                Build: #${env.BUILD_NUMBER}
-                Commit: ${env.GIT_COMMIT_SHORT}
-                Environment: ${env.DEPLOY_ENV}
-                ===========================================
-                """
+
+                try {
+                    bat """
+                    curl -X POST -H "Content-type: application/json" ^
+                    --data "{\\"text\\": \\"${successMessage.replace('"', '\\"')}\\"}" ^
+                    ${SLACK_WEBHOOK}
+                    """
+                    echo "✅ Success notification sent to Slack"
+                } catch (Exception e) {
+                    echo "Failed to send success notification: ${e.message}"
+                }
             }
         }
         
@@ -572,36 +566,28 @@ The DronCakes pipeline completed successfully!
                 """
                 
                 // Send failure notification to Slack
+                def SLACK_WEBHOOK = credentials('slack-webhook-url')
                 def failureMessage = """
 💥 *PIPELINE FAILED!* 💥
+Branch: *${env.BRANCH_NAME ?: 'main'}*
+Stage: *${failedStage}*
+Build: #${env.BUILD_NUMBER}
+URL: ${env.BUILD_URL}
 
-The DronCakes pipeline has failed and needs attention.
-
-*Failed Stage:* ${failedStage}
-*Branch:* ${env.CURRENT_BRANCH}
-*Build:* #${env.BUILD_NUMBER}
-*Commit:* ${env.GIT_COMMIT_SHORT}
-*Build URL:* ${env.BUILD_URL}
-
-🔧 Please check the logs and resolve the issues.
-👨‍💻 Contact the DevOps team if assistance is needed.
-
+🔧 Please check the Jenkins logs.
 @channel - Immediate attention required!
                 """.trim()
-                
-                // Send Slack notification - FAILURE
-                echo """
-                ===========================================
-                📱 SLACK NOTIFICATION - FAILURE
-                ===========================================
-                ${failureMessage}
-                
-                Branch: ${env.CURRENT_BRANCH}
-                Build: #${env.BUILD_NUMBER}
-                Commit: ${env.GIT_COMMIT_SHORT}
-                Failed Stage: ${failedStage}
-                ===========================================
-                """
+
+                try {
+                    bat """
+                    curl -X POST -H "Content-type: application/json" ^
+                    --data "{\\"text\\": \\"${failureMessage.replace('"', '\\"')}\\"}" ^
+                    ${SLACK_WEBHOOK}
+                    """
+                    echo "🚨 Failure notification sent to Slack"
+                } catch (Exception e) {
+                    echo "Failed to send failure notification: ${e.message}"
+                }
             }
         }
         
