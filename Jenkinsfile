@@ -45,8 +45,8 @@ pipeline {
         // Simple deployment config (can be overridden)
         DEPLOY_HOST = "${env.DEPLOY_HOST ?: 'localhost'}"
         
-        // Slack Configuration (configure webhook in Jenkins credentials store)
-        SLACK_WEBHOOK_ENABLED = "false" // Set to true when webhook is configured
+        // Slack Configuration (webhook stored securely in Jenkins credentials: slack-webhook-url)
+        SLACK_WEBHOOK_ENABLED = "true" // Webhook configured and ready to use
     }
     
     stages {
