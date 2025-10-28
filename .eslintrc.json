@@ -1,0 +1,39 @@
+{
+  "env": {
+    "node": true,
+    "es2021": true,
+    "jest": true
+  },
+  "extends": [
+    "standard"
+  ],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "indent": ["error", 2],
+    "quotes": ["error", "single"],
+    "semi": ["error", "never"],
+    "no-console": "warn",
+    "no-unused-vars": "error",
+    "no-undef": "error",
+    "camelcase": "warn",
+    "prefer-const": "error",
+    "no-var": "error",
+    "object-curly-spacing": ["error", "always"],
+    "array-bracket-spacing": ["error", "never"],
+    "comma-dangle": ["error", "never"],
+    "eol-last": ["error", "always"],
+    "no-trailing-spaces": "error",
+    "space-before-function-paren": ["error", "always"],
+    "keyword-spacing": ["error", { "before": true, "after": true }]
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "coverage/",
+    "build/",
+    "public/",
+    "*.min.js"
+  ]
+}

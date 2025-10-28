@@ -6,9 +6,51 @@
   "type": "module",
   "scripts": {
     "start": "node src/app.js",
-    "test": "echo \"(simulación de pruebas automáticas)\""
+    "test": "jest --coverage --ci --reporters=default --reporters=jest-junit",
+    "test:unit": "jest --testPathPattern=tests/unit --coverage",
+    "test:integration": "jest --testPathPattern=tests/integration",
+    "lint": "eslint src/ --format json --output-file eslint-report.json",
+    "lint:check": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "quality:sonar": "sonar-scanner -Dproject.settings=sonar-project.properties",
+    "e2e": "cypress run --reporter junit --reporter-options mochaFile=cypress-results.xml",
+    "e2e:open": "cypress open",
+    "security:audit": "npm audit --audit-level=moderate --json > security-audit.json || true",
+    "build": "npm ci --only=production",
+    "deploy": "node deploy.js"
   },
   "dependencies": {
     "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-junit": "^16.0.0",
+    "@babel/preset-env": "^7.23.0",
+    "babel-jest": "^29.7.0",
+    "eslint": "^8.53.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "sonarqube-scanner": "^3.3.0",
+    "cypress": "^13.6.0",
+    "supertest": "^6.3.3",
+    "cross-env": "^7.0.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/app.js"
+    ],
+    "coverageReporters": ["text", "lcov", "html", "cobertura"],
+    "testMatch": ["**/tests/**/*.test.js"],
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    }
+  },
+  "babel": {
+    "presets": [["@babel/preset-env", { "targets": { "node": "current" } }]]
   }
 }
