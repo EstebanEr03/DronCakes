@@ -56,7 +56,7 @@ commands:
             - node_modules
 
   # ===========================================
-  # SLACK NOTIFICATION COMMANDS
+  # SLACK NOTIFICATION COMMANDS - SIMPLIFIED
   # ===========================================
   
   notify_pipeline_start:
@@ -64,75 +64,24 @@ commands:
     steps:
       - slack/notify:
           event: pass
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "🚀 DronCakes Pipeline Started"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Pipeline STARTED!* 🚀\n\nDronCakes CI/CD pipeline is now running...\n\n*Branch:* ${CIRCLE_BRANCH}\n*Build:* #${CIRCLE_BUILD_NUM}\n*Commit:* ${CIRCLE_SHA1:0:7}\n*Environment:* ${CIRCLE_BRANCH == 'main' ? 'production' : CIRCLE_BRANCH}\n\nQuality Gate Required: ✅\n\n📊 Pipeline in progress..."
-                  }
-                }
-              ]
-            }
+          template: basic_success_1
+          mentions: '@channel'
 
   notify_pipeline_success:
-    description: "Send pipeline success notification to Slack"
+    description: "Send pipeline success notification to Slack"  
     steps:
       - slack/notify:
           event: pass
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "✅ Pipeline SUCCESS - DronCakes CI/CD"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*🎊 SUCCESS! DronCakes Pipeline Completed* 🎉\n\n✅ All tests passed and deployment completed successfully.\n\n*Branch:* ${CIRCLE_BRANCH}\n*Environment:* ${CIRCLE_BRANCH == 'main' ? 'production' : CIRCLE_BRANCH}\n*Build:* #${CIRCLE_BUILD_NUM}\n*Duration:* Completed in CircleCI\n\nQuality Summary:\n• Code Quality: ESLint ✓\n• Unit Tests: Jest ✓\n• Integration Tests: ✓\n• Security: npm audit ✓\n\n🚀 Ready for production!"
-                  }
-                }
-              ]
-            }
+          template: success_tagged_deploy_1
+          mentions: '@here'
 
   notify_pipeline_failure:
     description: "Send pipeline failure notification to Slack"
     steps:
       - slack/notify:
           event: fail
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "💥 Pipeline FAILED - DronCakes CI/CD"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*💥 PIPELINE FAILED!* 💥\n\n*Branch:* ${CIRCLE_BRANCH}\n*Build:* #${CIRCLE_BUILD_NUM}\n*URL:* ${CIRCLE_BUILD_URL}\n\n🔧 Please check the CircleCI logs.\n<!channel> - Immediate attention required!"
-                  }
-                }
-              ]
-            }
+          template: basic_fail_1
+          mentions: '@channel'
 
   notify_job_completion:
     description: "Send job completion notification to Slack"
@@ -144,18 +93,7 @@ commands:
     steps:
       - slack/notify:
           event: pass
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "<< parameters.emoji >> *<< parameters.job_name >> Completed* ✅\n\nBranch: *${CIRCLE_BRANCH}* | Build: #${CIRCLE_BUILD_NUM} | Project: *DronCakes*"
-                  }
-                }
-              ]
-            }
+          template: basic_success_1
 
 # ===========================================
 # JOBS - Individual Units of Work
