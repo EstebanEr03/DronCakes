@@ -480,8 +480,7 @@ Approval Required: ${env.APPROVAL_REQUIRED == 'true' ? '✅' : '❌'}
                 - Security: npm audit ✓
                 """
                 
-                // Send Slack notification using credentials
-                def SLACK_WEBHOOK = credentials('slack-webhook-url')
+                // Send Slack notification using withCredentials for proper Windows compatibility
                 def slackMessage = """
 *${emoji} Pipeline ${status} - DronCakes CI/CD*
 Branch: *${env.BRANCH_NAME ?: 'main'}*
@@ -497,14 +496,15 @@ Quality Summary:
 • Security: npm audit ✓
                 """.trim()
 
-                // Enviar mensaje a Slack
-                try {
-                    // Prepare the message for Windows batch
-                    def cleanMessage = slackMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
-                    bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanMessage}\\\"}\" ${SLACK_WEBHOOK}"
-                    echo "✅ Slack notification sent successfully"
-                } catch (Exception e) {
-                    echo "⚠️ Failed to send Slack notification: ${e.message}"
+                // Send Slack notification using withCredentials
+                withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
+                    try {
+                        def cleanMessage = slackMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
+                        bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanMessage}\\\"}\" %SLACK_WEBHOOK%"
+                        echo "✅ Slack notification sent successfully"
+                    } catch (Exception e) {
+                        echo "⚠️ Failed to send Slack notification: ${e.message}"
+                    }
                 }
             }
         }
@@ -522,7 +522,6 @@ Quality Summary:
                 }
                 
                 // Send additional success notification to Slack
-                def SLACK_WEBHOOK = credentials('slack-webhook-url')
                 def successMessage = """
 � *SUCCESS! DronCakes Pipeline Completed* 🎉
 
@@ -535,13 +534,14 @@ Duration: ${currentBuild.durationString}
 🚀 Ready for production!
                 """.trim()
 
-                try {
-                    // Prepare the success message for Windows batch
-                    def cleanSuccessMessage = successMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
-                    bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanSuccessMessage}\\\"}\" ${SLACK_WEBHOOK}"
-                    echo "✅ Success notification sent to Slack"
-                } catch (Exception e) {
-                    echo "Failed to send success notification: ${e.message}"
+                withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
+                    try {
+                        def cleanSuccessMessage = successMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
+                        bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanSuccessMessage}\\\"}\" %SLACK_WEBHOOK%"
+                        echo "✅ Success notification sent to Slack"
+                    } catch (Exception e) {
+                        echo "Failed to send success notification: ${e.message}"
+                    }
                 }
             }
         }
@@ -562,7 +562,6 @@ Duration: ${currentBuild.durationString}
                 """
                 
                 // Send failure notification to Slack
-                def SLACK_WEBHOOK = credentials('slack-webhook-url')
                 def failureMessage = """
 💥 *PIPELINE FAILED!* 💥
 Branch: *${env.BRANCH_NAME ?: 'main'}*
@@ -574,13 +573,14 @@ URL: ${env.BUILD_URL}
 @channel - Immediate attention required!
                 """.trim()
 
-                try {
-                    // Prepare the failure message for Windows batch
-                    def cleanFailureMessage = failureMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
-                    bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanFailureMessage}\\\"}\" ${SLACK_WEBHOOK}"
-                    echo "🚨 Failure notification sent to Slack"
-                } catch (Exception e) {
-                    echo "Failed to send failure notification: ${e.message}"
+                withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
+                    try {
+                        def cleanFailureMessage = failureMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
+                        bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanFailureMessage}\\\"}\" %SLACK_WEBHOOK%"
+                        echo "🚨 Failure notification sent to Slack"
+                    } catch (Exception e) {
+                        echo "Failed to send failure notification: ${e.message}"
+                    }
                 }
             }
         }
