@@ -44,6 +44,53 @@ pipeline {
         
         // Simple deployment config (can be overridden)
         DEPLOY_HOST = "${env.DEPLOY_HOST ?: 'localhost'}"
+        
+        // Slack Configuration (configure webhook in Jenkins credentials store)
+        SLACK_WEBHOOK_ENABLED = "false" // Set to true when webhook is configured
+    }
+    
+    // Helper function for Slack notifications
+    def sendSlackNotification(String status, String message, String color = 'good') {
+        try {
+            // NOTE: Configure SLACK_WEBHOOK_URL in Jenkins environment or use credentials
+            // For now, notifications are logged to console
+            echo """
+            ===========================================
+            📱 SLACK NOTIFICATION - ${status}
+            ===========================================
+            ${message}
+            
+            Branch: ${env.CURRENT_BRANCH ?: 'main'}
+            Build: #${env.BUILD_NUMBER}
+            Commit: ${env.GIT_COMMIT_SHORT ?: 'unknown'}
+            Environment: ${env.DEPLOY_ENV ?: 'none'}
+            ===========================================
+            """
+            
+            // Uncomment and configure when Slack webhook is properly secured:
+            /*
+            withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'WEBHOOK_URL')]) {
+                def payload = """
+                {
+                    "channel": "#jenkins", 
+                    "username": "Jenkins CI/CD",
+                    "icon_emoji": ":jenkins:",
+                    "text": "*DronCakes CI/CD Pipeline - ${status}*\\n${message}"
+                }
+                """
+                
+                bat '''
+                    powershell -Command "
+                    $payload = '%s'
+                    Invoke-RestMethod -Uri '%s' -Method Post -Body $payload -ContentType 'application/json'
+                    "
+                ''' % (payload.replace("'", "''"), WEBHOOK_URL)
+            }
+            */
+            
+        } catch (Exception e) {
+            echo "Failed to send Slack notification: ${e.message}"
+        }
     }
     
     stages {
@@ -105,6 +152,25 @@ pipeline {
                     echo "Commit: ${env.GIT_COMMIT_SHORT}"
                     echo "Environment: ${env.DEPLOY_ENV}"
                     echo "Quality Gate: ${env.QUALITY_GATE_REQUIRED}"
+                    
+                    // Send pipeline start notification to Slack
+                    def startMessage = """
+🚀 *PIPELINE STARTED!* 
+
+DronCakes CI/CD pipeline is now running...
+
+*Branch:* ${currentBranch}
+*Environment:* ${env.DEPLOY_ENV}
+*Build:* #${env.BUILD_NUMBER}
+*Commit:* ${env.GIT_COMMIT_SHORT}
+
+Quality Gate Required: ${env.QUALITY_GATE_REQUIRED == 'true' ? '✅' : '❌'}
+Approval Required: ${env.APPROVAL_REQUIRED == 'true' ? '✅' : '❌'}
+
+📊 Pipeline in progress... 
+                    """.trim()
+                    
+                    sendSlackNotification("STARTED", startMessage, "#36a64f")
                 }
             }
         }
@@ -445,6 +511,25 @@ pipeline {
                 - Integration Tests: ✓
                 - Security: npm audit ✓
                 """
+                
+                // Send Slack notification with pipeline result
+                def color = status == 'SUCCESS' ? 'good' : (status == 'UNSTABLE' ? 'warning' : 'danger')
+                def slackMessage = """
+Pipeline ${status} ${emoji}
+
+*Branch:* ${env.CURRENT_BRANCH}
+*Environment:* ${environment}
+*Duration:* ${currentBuild.durationString}
+*Build URL:* ${env.BUILD_URL}
+
+Quality Summary:
+• Code Quality: ESLint ✓
+• Unit Tests: Jest ✓  
+• Integration Tests: ✓
+• Security: npm audit ✓
+                """.trim()
+                
+                sendSlackNotification(status, slackMessage, color)
             }
         }
         
@@ -459,6 +544,23 @@ pipeline {
                 } catch (Exception e) {
                     echo "Artifact archiving completed with some issues: ${e.message}"
                 }
+                
+                // Send success notification to Slack
+                def successMessage = """
+🎊 *DEPLOYMENT SUCCESSFUL!* 🎊
+
+The DronCakes pipeline completed successfully!
+
+*Branch:* ${env.CURRENT_BRANCH}
+*Environment:* ${env.DEPLOY_ENV ?: 'none'}
+*Build:* #${env.BUILD_NUMBER}
+*Duration:* ${currentBuild.durationString}
+
+✅ All quality gates passed!
+🚀 Ready for production!
+                """.trim()
+                
+                sendSlackNotification("SUCCESS", successMessage, "good")
             }
         }
         
@@ -476,6 +578,26 @@ pipeline {
                 Please check the logs and resolve the issues.
                 Contact the DevOps team if assistance is needed.
                 """
+                
+                // Send failure notification to Slack
+                def failureMessage = """
+💥 *PIPELINE FAILED!* 💥
+
+The DronCakes pipeline has failed and needs attention.
+
+*Failed Stage:* ${failedStage}
+*Branch:* ${env.CURRENT_BRANCH}
+*Build:* #${env.BUILD_NUMBER}
+*Commit:* ${env.GIT_COMMIT_SHORT}
+*Build URL:* ${env.BUILD_URL}
+
+🔧 Please check the logs and resolve the issues.
+👨‍💻 Contact the DevOps team if assistance is needed.
+
+@channel - Immediate attention required!
+                """.trim()
+                
+                sendSlackNotification("FAILURE", failureMessage, "danger")
             }
         }
         
