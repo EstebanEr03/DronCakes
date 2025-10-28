@@ -26,27 +26,11 @@ pipeline {
         
         // Variables del proyecto
         PROJECT_NAME = "droncakes"
-        BUILD_VERSION = "${env.BUILD_NUMBER}"
+        BUILD_VERSION = "${env.BUILD_NUMBER ?: '1'}"
         
-        // Variables dinámicas basadas en la rama
-        BRANCH_NAME = "${env.BRANCH_NAME ?: 'main'}"
-        IS_MAIN_BRANCH = "${env.BRANCH_NAME == 'main'}"
-        IS_DEVELOP_BRANCH = "${env.BRANCH_NAME == 'develop'}"
-        IS_STAGING_BRANCH = "${env.BRANCH_NAME == 'staging'}"
-        IS_FEATURE_BRANCH = "${env.BRANCH_NAME?.startsWith('feature/') ?: false}"
-        
-        // Configuración de puertos por rama para evitar conflictos
-        PORT = "${getBranchPort()}"
-        
-        // Entorno de despliegue basado en rama
-        DEPLOY_ENVIRONMENT = "${getDeployEnvironment()}"
-        
-        // Nombre de artefacto con información de rama
-        ARTIFACT_NAME = "${PROJECT_NAME}_${BRANCH_NAME.replaceAll('/', '-')}_v${BUILD_VERSION}_build.zip"
+        // Variables básicas (se configurarán dinámicamente en el primer stage)
+        CURRENT_BRANCH = "${env.BRANCH_NAME ?: 'main'}"
     }
-
-    // Definición de funciones auxiliares para configuración dinámica
-    // Estas funciones se ejecutan durante la inicialización del pipeline
 
     // Definición de todas las etapas del pipeline
     stages {
@@ -63,40 +47,51 @@ pipeline {
                     echo "=========================================="
                     echo "CONFIGURACIÓN DE RAMA Y ESTRATEGIA"
                     echo "=========================================="
-                    echo "Rama actual: ${BRANCH_NAME}"
+                    
+                    // Detectar rama actual con fallback seguro
+                    def currentBranch = env.BRANCH_NAME ?: 'main'
+                    env.CURRENT_BRANCH = currentBranch
+                    
+                    echo "Rama actual: ${currentBranch}"
+                    echo "Build number: ${env.BUILD_NUMBER ?: '1'}"
                     echo "Tipo de rama detectado:"
                     
-                    if (env.BRANCH_NAME == 'main') {
+                    // Configurar variables según el tipo de rama
+                    if (currentBranch == 'main') {
                         echo "- MAIN: Rama principal - Despliegue a PRODUCCIÓN"
                         env.DEPLOY_ENV = "production"
                         env.PORT_NUMBER = "3000"
                         env.RUN_SECURITY_SCAN = "true"
                         env.DEPLOY_ENABLED = "true"
                         env.NOTIFICATION_LEVEL = "high"
+                        env.TEST_LEVEL = "complete"
                     } 
-                    else if (env.BRANCH_NAME == 'develop') {
+                    else if (currentBranch == 'develop') {
                         echo "- DEVELOP: Rama de desarrollo - Despliegue a DESARROLLO"
                         env.DEPLOY_ENV = "development" 
                         env.PORT_NUMBER = "3001"
                         env.RUN_SECURITY_SCAN = "false"
                         env.DEPLOY_ENABLED = "true"
                         env.NOTIFICATION_LEVEL = "medium"
+                        env.TEST_LEVEL = "standard"
                     }
-                    else if (env.BRANCH_NAME == 'staging') {
+                    else if (currentBranch == 'staging') {
                         echo "- STAGING: Rama de pruebas - Despliegue a TESTING"
                         env.DEPLOY_ENV = "testing"
                         env.PORT_NUMBER = "3002" 
                         env.RUN_SECURITY_SCAN = "true"
                         env.DEPLOY_ENABLED = "true"
                         env.NOTIFICATION_LEVEL = "high"
+                        env.TEST_LEVEL = "extensive"
                     }
-                    else if (env.BRANCH_NAME?.startsWith('feature/')) {
+                    else if (currentBranch.startsWith('feature/')) {
                         echo "- FEATURE: Rama de característica - Solo VALIDACIÓN"
                         env.DEPLOY_ENV = "none"
                         env.PORT_NUMBER = "3003"
                         env.RUN_SECURITY_SCAN = "false" 
                         env.DEPLOY_ENABLED = "false"
                         env.NOTIFICATION_LEVEL = "low"
+                        env.TEST_LEVEL = "basic"
                     }
                     else {
                         echo "- OTROS: Rama no reconocida - Configuración por defecto"
@@ -105,7 +100,12 @@ pipeline {
                         env.RUN_SECURITY_SCAN = "false"
                         env.DEPLOY_ENABLED = "false" 
                         env.NOTIFICATION_LEVEL = "low"
+                        env.TEST_LEVEL = "basic"
                     }
+                    
+                    // Crear nombre de artefacto con información de rama
+                    def branchSafe = currentBranch.replaceAll('/', '-')
+                    env.ARTIFACT_NAME = "${env.PROJECT_NAME}_${branchSafe}_v${env.BUILD_NUMBER ?: '1'}_build.zip"
                     
                     echo "Configuración aplicada:"
                     echo "- Entorno de despliegue: ${env.DEPLOY_ENV}"
@@ -113,6 +113,8 @@ pipeline {
                     echo "- Escaneo de seguridad: ${env.RUN_SECURITY_SCAN}"
                     echo "- Despliegue habilitado: ${env.DEPLOY_ENABLED}"
                     echo "- Nivel de notificación: ${env.NOTIFICATION_LEVEL}"
+                    echo "- Nivel de pruebas: ${env.TEST_LEVEL}"
+                    echo "- Nombre de artefacto: ${env.ARTIFACT_NAME}"
                     echo "=========================================="
                 }
             }
@@ -126,39 +128,19 @@ pipeline {
          */
         stage('Checkout Source Code') {
             steps {
-                script {
-                    echo "INICIANDO: Descarga del código fuente desde repositorio"
-                    echo "Repositorio: GitHub - EstebanEr03/DronCakes"
-                    echo "Rama objetivo: ${env.BRANCH_NAME ?: 'main'}"
-                    
-                    // Checkout dinámico basado en la rama que disparó el pipeline
-                    if (env.BRANCH_NAME) {
-                        echo "Clonando rama específica: ${env.BRANCH_NAME}"
-                        checkout([$class: 'GitSCM',
-                            branches: [[name: "*/${env.BRANCH_NAME}"]],
-                            doGenerateSubmoduleConfigurations: false,
-                            extensions: [],
-                            submoduleCfg: [],
-                            userRemoteConfigs: [[
-                                credentialsId: 'git-credentials',
-                                url: 'https://github.com/EstebanEr03/DronCakes.git'
-                            ]]
-                        ])
-                    } else {
-                        // Fallback para ejecuciones manuales
-                        echo "Clonando rama por defecto: main"
-                        git branch: 'main', 
-                            credentialsId: 'git-credentials', 
-                            url: 'https://github.com/EstebanEr03/DronCakes.git'
-                    }
-                    
-                    // Mostrar información del commit actual
-                    bat '''
-                        echo Información del commit actual:
-                        git log -1 --oneline
-                        git branch -a
-                    '''
-                }
+                echo "INICIANDO: Descarga del código fuente desde repositorio"
+                echo "Repositorio: GitHub - EstebanEr03/DronCakes"
+                echo "Rama objetivo: ${env.CURRENT_BRANCH ?: 'main'}"
+                
+                // El checkout automático de Jenkins ya manejó la descarga
+                // Solo mostrar información del commit actual
+                bat '''
+                    echo Información del commit actual:
+                    git log -1 --oneline 2>nul || echo No hay información de git disponible
+                    git branch -a 2>nul || echo No hay ramas disponibles
+                    echo Directorio actual: %CD%
+                    dir
+                '''
                 
                 echo "COMPLETADO: Código fuente descargado exitosamente"
             }
@@ -345,9 +327,12 @@ pipeline {
                     npm test
                 '''
                 
-                // Pruebas adicionales según el nivel
+                // Pruebas adicionales según el nivel de la rama
                 script {
-                    if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'staging') {
+                    def currentBranch = env.CURRENT_BRANCH ?: 'main'
+                    def testLevel = env.TEST_LEVEL ?: 'basic'
+                    
+                    if (currentBranch == 'main' || currentBranch == 'staging') {
                         bat '''
                             echo Ejecutando pruebas extensivas para producción...
                             echo [TEST-EXTENDED] Pruebas de rendimiento...
@@ -357,7 +342,7 @@ pipeline {
                         '''
                     }
                     
-                    if (env.BRANCH_NAME != 'feature/*') {
+                    if (!currentBranch.startsWith('feature/')) {
                         bat '''
                             echo Ejecutando pruebas de integración...
                             echo [TEST-INTEGRATION] Verificando configuración de rutas API...
@@ -367,11 +352,7 @@ pipeline {
                         '''
                     }
                     
-                    bat '''
-                        echo [RESULT] Todas las pruebas pasaron exitosamente para nivel: %s
-                    ''' % (env.BRANCH_NAME == 'main' ? 'COMPLETO' : 
-                           env.BRANCH_NAME == 'staging' ? 'EXTENSIVO' :
-                           env.BRANCH_NAME == 'develop' ? 'ESTÁNDAR' : 'BÁSICO')
+                    echo "RESULTADO: Todas las pruebas pasaron exitosamente para nivel: ${testLevel.toUpperCase()}"
                 }
                 
                 echo "COMPLETADO: Suite de pruebas ejecutada exitosamente"
@@ -507,11 +488,16 @@ pipeline {
             }
             steps {
                 script {
-                    echo "INICIANDO: Despliegue automático en entorno ${env.DEPLOY_ENV}"
-                    echo "Puerto de despliegue: ${env.PORT_NUMBER}"
+                    def deployEnv = env.DEPLOY_ENV ?: 'testing'
+                    def portNumber = env.PORT_NUMBER ?: '3000'
+                    def currentBranch = env.CURRENT_BRANCH ?: 'main'
+                    
+                    echo "INICIANDO: Despliegue automático en entorno ${deployEnv}"
+                    echo "Puerto de despliegue: ${portNumber}"
+                    echo "Rama: ${currentBranch}"
                     
                     // Simular despliegue según el entorno
-                    if (env.BRANCH_NAME == 'main') {
+                    if (currentBranch == 'main') {
                         bat '''
                             echo [DEPLOY-PROD] Desplegando en PRODUCCIÓN...
                             echo [DEPLOY-PROD] Validando requisitos de producción...
@@ -521,7 +507,7 @@ pipeline {
                             echo [DEPLOY-PROD] Despliegue en producción completado
                             echo [DEPLOY-PROD] URL: https://droncakes.production.com
                         '''
-                    } else if (env.BRANCH_NAME == 'staging') {
+                    } else if (currentBranch == 'staging') {
                         bat '''
                             echo [DEPLOY-TEST] Desplegando en TESTING...
                             echo [DEPLOY-TEST] Configurando entorno de pruebas...
@@ -531,7 +517,7 @@ pipeline {
                             echo [DEPLOY-TEST] Despliegue en testing completado
                             echo [DEPLOY-TEST] URL: https://droncakes.testing.com
                         '''
-                    } else if (env.BRANCH_NAME == 'develop') {
+                    } else if (currentBranch == 'develop') {
                         bat '''
                             echo [DEPLOY-DEV] Desplegando en DESARROLLO...
                             echo [DEPLOY-DEV] Configurando entorno de desarrollo...
@@ -541,9 +527,9 @@ pipeline {
                             echo [DEPLOY-DEV] URL: https://droncakes.dev.com
                         '''
                     }
+                    
+                    echo "COMPLETADO: Despliegue automático finalizado en ${deployEnv}"
                 }
-                
-                echo "COMPLETADO: Despliegue automático finalizado en ${env.DEPLOY_ENV}"
             }
         }
 
@@ -561,67 +547,75 @@ pipeline {
                 }
             }
             steps {
-                echo "INICIANDO: Preparación para despliegue manual"
-                echo "Rama: ${env.BRANCH_NAME} (requiere aprobación manual)"
-                echo "Entorno de destino: ${env.DEPLOY_ENV}"
-                
-                // Generar scripts de despliegue específicos para la rama
                 script {
+                    def currentBranch = env.CURRENT_BRANCH ?: 'main'
+                    def deployEnv = env.DEPLOY_ENV ?: 'testing'
+                    def portNumber = env.PORT_NUMBER ?: '3000'
+                    def artifactName = env.ARTIFACT_NAME ?: 'droncakes_build.zip'
+                    def branchSafe = currentBranch.replaceAll('/', '-')
+                    def projectName = env.PROJECT_NAME ?: 'droncakes'
+                    def buildVersion = env.BUILD_VERSION ?: '1'
+                    
+                    echo "INICIANDO: Preparación para despliegue manual"
+                    echo "Rama: ${currentBranch} (requiere aprobación manual)"
+                    echo "Entorno de destino: ${deployEnv}"
+                    
+                    // Generar scripts de despliegue específicos para la rama
                     bat """
-                        echo Generando scripts de despliegue para rama ${env.BRANCH_NAME}...
+                        echo Generando scripts de despliegue para rama ${currentBranch}...
                         (
                             echo @echo off
-                            echo echo Desplegando DronCakes - Rama: ${env.BRANCH_NAME}
-                            echo echo Entorno: ${env.DEPLOY_ENV}
-                            echo echo Puerto: ${env.PORT_NUMBER}
+                            echo echo Desplegando DronCakes - Rama: ${currentBranch}
+                            echo echo Entorno: ${deployEnv}
+                            echo echo Puerto: ${portNumber}
                             echo npm install --production
-                            echo set PORT=${env.PORT_NUMBER}
-                            echo echo Iniciando aplicación en puerto ${env.PORT_NUMBER}...
+                            echo set PORT=${portNumber}
+                            echo echo Iniciando aplicación en puerto ${portNumber}...
                             echo npm start
-                        ) > deploy-${env.BRANCH_NAME.replaceAll('/', '-')}.bat
+                        ) > deploy-${branchSafe}.bat
                     """
+                    
+                    // Crear archivo de configuración específico
+                    bat """
+                        echo Creando configuración de despliegue...
+                        (
+                            echo {
+                            echo   "name": "${projectName}",
+                            echo   "version": "${buildVersion}",
+                            echo   "branch": "${currentBranch}",
+                            echo   "environment": "${deployEnv}",
+                            echo   "port": ${portNumber},
+                            echo   "buildDate": "%DATE% %TIME%",
+                            echo   "deploymentType": "manual",
+                            echo   "requiresApproval": true
+                            echo }
+                        ) > deployment-config-${branchSafe}.json
+                    """
+                    
+                    // Crear instrucciones de despliegue manual
+                    bat """
+                        echo Generando instrucciones de despliegue manual...
+                        (
+                            echo INSTRUCCIONES DE DESPLIEGUE MANUAL
+                            echo =====================================
+                            echo.
+                            echo Rama: ${currentBranch}
+                            echo Entorno: ${deployEnv}
+                            echo Artefacto: ${artifactName}
+                            echo.
+                            echo Pasos para despliegue:
+                            echo 1. Descargar artefacto desde Jenkins
+                            echo 2. Extraer contenido en servidor de destino
+                            echo 3. Ejecutar: deploy-${branchSafe}.bat
+                            echo 4. Verificar funcionamiento en puerto ${portNumber}
+                            echo.
+                            echo IMPORTANTE: Esta rama requiere aprobación manual
+                        ) > DEPLOYMENT-INSTRUCTIONS.txt
+                    """
+                    
+                    echo "COMPLETADO: Preparación para despliegue manual finalizada"
+                    echo "NOTA: Artefactos preparados para revisión y despliegue manual"
                 }
-                
-                // Crear archivo de configuración específico
-                bat """
-                    echo Creando configuración de despliegue...
-                    (
-                        echo {
-                        echo   "name": "${PROJECT_NAME}",
-                        echo   "version": "${BUILD_VERSION}",
-                        echo   "branch": "${env.BRANCH_NAME}",
-                        echo   "environment": "${env.DEPLOY_ENV}",
-                        echo   "port": ${env.PORT_NUMBER},
-                        echo   "buildDate": "%DATE% %TIME%",
-                        echo   "deploymentType": "manual",
-                        echo   "requiresApproval": true
-                        echo }
-                    ) > deployment-config-${env.BRANCH_NAME.replaceAll('/', '-')}.json
-                """
-                
-                // Crear instrucciones de despliegue manual
-                bat """
-                    echo Generando instrucciones de despliegue manual...
-                    (
-                        echo INSTRUCCIONES DE DESPLIEGUE MANUAL
-                        echo =====================================
-                        echo.
-                        echo Rama: ${env.BRANCH_NAME}
-                        echo Entorno: ${env.DEPLOY_ENV}
-                        echo Artefacto: ${env.ARTIFACT_NAME}
-                        echo.
-                        echo Pasos para despliegue:
-                        echo 1. Descargar artefacto desde Jenkins
-                        echo 2. Extraer contenido en servidor de destino
-                        echo 3. Ejecutar: deploy-${env.BRANCH_NAME.replaceAll('/', '-')}.bat
-                        echo 4. Verificar funcionamiento en puerto ${env.PORT_NUMBER}
-                        echo.
-                        echo IMPORTANTE: Esta rama requiere aprobación manual
-                    ) > DEPLOYMENT-INSTRUCTIONS.txt
-                """
-                
-                echo "COMPLETADO: Preparación para despliegue manual finalizada"
-                echo "NOTA: Artefactos preparados para revisión y despliegue manual"
             }
         }
     }
@@ -636,31 +630,35 @@ pipeline {
         // Ejecutar solo si el pipeline fue exitoso
         success {
             script {
+                def currentBranch = env.CURRENT_BRANCH ?: 'main'
+                def buildVersion = env.BUILD_VERSION ?: '1'
+                def artifactName = env.ARTIFACT_NAME ?: 'droncakes_build.zip'
+                
                 echo "=========================================="
                 echo "PIPELINE COMPLETADO EXITOSAMENTE"
                 echo "=========================================="
                 echo "Proyecto: DronCakes Sistema de Repostería"
-                echo "Rama: ${env.BRANCH_NAME}"
-                echo "Build: ${BUILD_VERSION}"
-                echo "Artefacto: ${ARTIFACT_NAME}"
+                echo "Rama: ${currentBranch}"
+                echo "Build: ${buildVersion}"
+                echo "Artefacto: ${artifactName}"
                 
                 // Mensaje específico según la rama
-                if (env.BRANCH_NAME == 'main') {
+                if (currentBranch == 'main') {
                     echo "Estado: DESPLEGADO EN PRODUCCIÓN"
                     echo "URL Producción: https://droncakes.production.com"
                     echo "Siguiente paso: Monitoreo de producción"
                     echo "Nivel de alerta: CRÍTICO - Notificar a todo el equipo"
-                } else if (env.BRANCH_NAME == 'staging') {
+                } else if (currentBranch == 'staging') {
                     echo "Estado: DESPLEGADO EN TESTING" 
                     echo "URL Testing: https://droncakes.testing.com"
                     echo "Siguiente paso: Ejecutar pruebas de aceptación"
                     echo "Nivel de alerta: ALTO - Notificar a QA team"
-                } else if (env.BRANCH_NAME == 'develop') {
+                } else if (currentBranch == 'develop') {
                     echo "Estado: DESPLEGADO EN DESARROLLO"
                     echo "URL Desarrollo: https://droncakes.dev.com"
                     echo "Siguiente paso: Continuar desarrollo"
                     echo "Nivel de alerta: MEDIO - Notificar a dev team"
-                } else if (env.BRANCH_NAME?.startsWith('feature/')) {
+                } else if (currentBranch.startsWith('feature/')) {
                     echo "Estado: VALIDADO - LISTO PARA REVISIÓN"
                     echo "Tipo: Feature branch - Sin despliegue automático"
                     echo "Siguiente paso: Code review y merge"
@@ -671,8 +669,10 @@ pipeline {
                     echo "Nivel de alerta: BAJO"
                 }
                 
-                echo "Puerto asignado: ${env.PORT_NUMBER}"
-                echo "Entorno: ${env.DEPLOY_ENV}"
+                def portNumber = env.PORT_NUMBER ?: '3000'
+                def deployEnv = env.DEPLOY_ENV ?: 'testing'
+                echo "Puerto asignado: ${portNumber}"
+                echo "Entorno: ${deployEnv}"
                 echo "=========================================="
                 
                 // Simular diferentes tipos de notificaciones
@@ -689,31 +689,34 @@ pipeline {
         // Ejecutar solo si el pipeline falló
         failure {
             script {
+                def currentBranch = env.CURRENT_BRANCH ?: 'main'
+                def buildVersion = env.BUILD_VERSION ?: '1'
+                
                 echo "=========================================="
                 echo "PIPELINE FALLÓ"
                 echo "=========================================="
                 echo "Proyecto: DronCakes"
-                echo "Rama: ${env.BRANCH_NAME}"
-                echo "Build: ${BUILD_VERSION}"
+                echo "Rama: ${currentBranch}"
+                echo "Build: ${buildVersion}"
                 echo "Estado: FALLÓ"
                 
                 // Mensaje de fallo específico según la rama
-                if (env.BRANCH_NAME == 'main') {
+                if (currentBranch == 'main') {
                     echo "CRITICIDAD: ALTA - Fallo en rama principal"
                     echo "Impacto: Posible interrupción de producción"
                     echo "Acción: Rollback inmediato y hotfix"
                     echo "Notificación: Equipo completo + management"
-                } else if (env.BRANCH_NAME == 'staging') {
+                } else if (currentBranch == 'staging') {
                     echo "CRITICIDAD: MEDIA - Fallo en rama de testing"
                     echo "Impacto: Pruebas de aceptación bloqueadas"
                     echo "Acción: Revisar y corregir antes de merge a main"
                     echo "Notificación: QA team + tech lead"
-                } else if (env.BRANCH_NAME == 'develop') {
+                } else if (currentBranch == 'develop') {
                     echo "CRITICIDAD: MEDIA - Fallo en rama de desarrollo"
                     echo "Impacto: Desarrollo bloqueado"
                     echo "Acción: Revisar logs y corregir"
                     echo "Notificación: Dev team"
-                } else if (env.BRANCH_NAME?.startsWith('feature/')) {
+                } else if (currentBranch.startsWith('feature/')) {
                     echo "CRITICIDAD: BAJA - Fallo en feature branch"
                     echo "Impacto: Solo desarrollo de feature afectado"
                     echo "Acción: Desarrollador debe revisar y corregir"
@@ -747,16 +750,20 @@ pipeline {
         // Ejecutar siempre al final, sin importar el resultado
         always {
             script {
+                def currentBranch = env.CURRENT_BRANCH ?: 'main'
+                def buildVersion = env.BUILD_VERSION ?: '1'
+                def branchSafe = currentBranch.replaceAll('/', '-')
+                
                 echo "Ejecutando limpieza final del pipeline..."
-                echo "Rama procesada: ${env.BRANCH_NAME}"
-                echo "Tiempo de pipeline: ${currentBuild.durationString}"
+                echo "Rama procesada: ${currentBranch}"
+                echo "Tiempo de pipeline: ${currentBuild.durationString ?: 'N/A'}"
                 
                 // Archivar logs específicos por rama
                 bat """
                     echo Archivando logs del pipeline...
-                    echo Pipeline para rama ${env.BRANCH_NAME} > pipeline-${env.BRANCH_NAME.replaceAll('/', '-')}-log.txt
-                    echo Build number: ${BUILD_VERSION} >> pipeline-${env.BRANCH_NAME.replaceAll('/', '-')}-log.txt
-                    echo Timestamp: %DATE% %TIME% >> pipeline-${env.BRANCH_NAME.replaceAll('/', '-')}-log.txt
+                    echo Pipeline para rama ${currentBranch} > pipeline-${branchSafe}-log.txt
+                    echo Build number: ${buildVersion} >> pipeline-${branchSafe}-log.txt
+                    echo Timestamp: %DATE% %TIME% >> pipeline-${branchSafe}-log.txt
                 """
                 
                 // Limpiar archivos temporales
@@ -767,7 +774,7 @@ pipeline {
                     if exist *.tmp del *.tmp 2>nul || echo No hay archivos tmp que limpiar
                 '''
                 
-                echo "Pipeline finalizado para rama ${env.BRANCH_NAME}"
+                echo "Pipeline finalizado para rama ${currentBranch}"
                 echo "Timestamp: ${new Date()}"
                 echo "Próxima ejecución: Según configuración de triggers"
             }
