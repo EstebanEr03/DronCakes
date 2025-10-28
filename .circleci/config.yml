@@ -62,35 +62,72 @@ commands:
   notify_pipeline_start:
     description: "Send pipeline start notification to Slack"
     steps:
-      - slack/notify:
-          event: pass
-          channel: "#all-universidad"
-          custom: |
-            {
-              "text": "🚀 *DronCakes Pipeline Started* - Branch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}"
-            }
+      - run:
+          name: 📱 Send Pipeline Start Notification
+          command: |
+            curl -X POST -H 'Content-type: application/json' \
+            -H "Authorization: Bearer $SLACK_ACCESS_TOKEN" \
+            --data '{
+              "channel": "#all-universidad",
+              "text": "🚀 *DronCakes Pipeline Started*",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Branch", "value": "'${CIRCLE_BRANCH}'", "short": true},
+                  {"title": "Build", "value": "#'${CIRCLE_BUILD_NUM}'", "short": true},
+                  {"title": "Commit", "value": "'${CIRCLE_SHA1:0:7}'", "short": true},
+                  {"title": "Status", "value": "Pipeline Started 🚀", "short": true}
+                ]
+              }]
+            }' \
+            https://slack.com/api/chat.postMessage
 
   notify_pipeline_success:
     description: "Send pipeline success notification to Slack"  
     steps:
-      - slack/notify:
-          event: pass
-          channel: "#all-universidad"
-          custom: |
-            {
-              "text": "✅ *SUCCESS! DronCakes Pipeline Completed* 🎉\n\nBranch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}\n\nAll tests passed and deployment completed successfully! 🚀"
-            }
+      - run:
+          name: ✅ Send Pipeline Success Notification
+          command: |
+            curl -X POST -H 'Content-type: application/json' \
+            -H "Authorization: Bearer $SLACK_ACCESS_TOKEN" \
+            --data '{
+              "channel": "#all-universidad",
+              "text": "✅ *SUCCESS! DronCakes Pipeline Completed* 🎉",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Branch", "value": "'${CIRCLE_BRANCH}'", "short": true},
+                  {"title": "Build", "value": "#'${CIRCLE_BUILD_NUM}'", "short": true},
+                  {"title": "Status", "value": "All tests passed! 🚀", "short": true},
+                  {"title": "Duration", "value": "Completed in CircleCI", "short": true}
+                ]
+              }]
+            }' \
+            https://slack.com/api/chat.postMessage
 
   notify_pipeline_failure:
     description: "Send pipeline failure notification to Slack"
     steps:
-      - slack/notify:
-          event: fail
-          channel: "#all-universidad"
-          custom: |
-            {
-              "text": "💥 *PIPELINE FAILED!* 💥\n\nBranch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}\n\nPlease check the CircleCI logs! @channel"
-            }
+      - run:
+          name: 💥 Send Pipeline Failure Notification
+          command: |
+            curl -X POST -H 'Content-type: application/json' \
+            -H "Authorization: Bearer $SLACK_ACCESS_TOKEN" \
+            --data '{
+              "channel": "#all-universidad",
+              "text": "💥 *PIPELINE FAILED!* 💥",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "Branch", "value": "'${CIRCLE_BRANCH}'", "short": true},
+                  {"title": "Build", "value": "#'${CIRCLE_BUILD_NUM}'", "short": true},
+                  {"title": "Status", "value": "Build Failed 💥", "short": true},
+                  {"title": "Action", "value": "Check CircleCI logs!", "short": true}
+                ]
+              }]
+            }' \
+            https://slack.com/api/chat.postMessage
+          when: on_fail
 
   notify_job_completion:
     description: "Send job completion notification to Slack"
@@ -100,13 +137,23 @@ commands:
       emoji:
         type: string
     steps:
-      - slack/notify:
-          event: pass
-          channel: "#all-universidad"
-          custom: |
-            {
-              "text": "<< parameters.emoji >> *<< parameters.job_name >> Completed* ✅ | Branch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}"
-            }
+      - run:
+          name: << parameters.emoji >> Send Job Completion Notification
+          command: |
+            curl -X POST -H 'Content-type: application/json' \
+            -H "Authorization: Bearer $SLACK_ACCESS_TOKEN" \
+            --data '{
+              "channel": "#all-universidad",
+              "text": "<< parameters.emoji >> *<< parameters.job_name >> Completed* ✅",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Branch", "value": "'${CIRCLE_BRANCH}'", "short": true},
+                  {"title": "Build", "value": "#'${CIRCLE_BUILD_NUM}'", "short": true}
+                ]
+              }]
+            }' \
+            https://slack.com/api/chat.postMessage
 
 # ===========================================
 # JOBS - Individual Units of Work
