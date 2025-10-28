@@ -1,9 +1,9 @@
-import express from "express";
-import { getDrones, updateDrone } from "../controllers/dronesController.js";
+import express from 'express'
+import { getDrones, updateDrone } from '../controllers/dronesController.js'
 
-const router = express.Router();
+const router = express.Router()
 
-router.get("/", getDrones);
-router.put("/:id", updateDrone);
+router.get('/', getDrones)
+router.put('/:id', updateDrone)
 
-export default router;
+export default router
