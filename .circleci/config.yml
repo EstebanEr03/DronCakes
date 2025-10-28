@@ -64,24 +64,33 @@ commands:
     steps:
       - slack/notify:
           event: pass
-          template: basic_success_1
-          mentions: '@channel'
+          channel: "#all-universidad"
+          custom: |
+            {
+              "text": "🚀 *DronCakes Pipeline Started* - Branch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}"
+            }
 
   notify_pipeline_success:
     description: "Send pipeline success notification to Slack"  
     steps:
       - slack/notify:
           event: pass
-          template: success_tagged_deploy_1
-          mentions: '@here'
+          channel: "#all-universidad"
+          custom: |
+            {
+              "text": "✅ *SUCCESS! DronCakes Pipeline Completed* 🎉\n\nBranch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}\n\nAll tests passed and deployment completed successfully! 🚀"
+            }
 
   notify_pipeline_failure:
     description: "Send pipeline failure notification to Slack"
     steps:
       - slack/notify:
           event: fail
-          template: basic_fail_1
-          mentions: '@channel'
+          channel: "#all-universidad"
+          custom: |
+            {
+              "text": "💥 *PIPELINE FAILED!* 💥\n\nBranch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}\n\nPlease check the CircleCI logs! @channel"
+            }
 
   notify_job_completion:
     description: "Send job completion notification to Slack"
@@ -93,7 +102,11 @@ commands:
     steps:
       - slack/notify:
           event: pass
-          template: basic_success_1
+          channel: "#all-universidad"
+          custom: |
+            {
+              "text": "<< parameters.emoji >> *<< parameters.job_name >> Completed* ✅ | Branch: ${CIRCLE_BRANCH} | Build: #${CIRCLE_BUILD_NUM}"
+            }
 
 # ===========================================
 # JOBS - Individual Units of Work
