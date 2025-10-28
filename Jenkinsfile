@@ -24,11 +24,17 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs "Node18" // This should match your NodeJS installation name in Jenkins
-    }
+    // NOTE: Using system Node.js instead of Jenkins plugin
+    // If you have NodeJS Plugin installed, you can use:
+    // tools {
+    //     nodejs "Node18" // This should match your NodeJS installation name in Jenkins
+    // }
     
     environment {
+        // Node.js Configuration (using system installation)
+        NODE_HOME = "C:\\Program Files\\nodejs"
+        PATH = "${env.NODE_HOME};${env.PATH}"
+        
         // Project Configuration
         PROJECT_NAME = "droncakes"
         BUILD_VERSION = "${env.BUILD_NUMBER ?: '1'}"
