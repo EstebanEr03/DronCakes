@@ -499,11 +499,9 @@ Quality Summary:
 
                 // Enviar mensaje a Slack
                 try {
-                    bat """
-                    curl -X POST -H "Content-type: application/json" ^
-                    --data "{\\"text\\": \\"${slackMessage.replace('"', '\\"')}\\"}" ^
-                    ${SLACK_WEBHOOK}
-                    """
+                    // Prepare the message for Windows batch
+                    def cleanMessage = slackMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
+                    bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanMessage}\\\"}\" ${SLACK_WEBHOOK}"
                     echo "✅ Slack notification sent successfully"
                 } catch (Exception e) {
                     echo "⚠️ Failed to send Slack notification: ${e.message}"
@@ -538,11 +536,9 @@ Duration: ${currentBuild.durationString}
                 """.trim()
 
                 try {
-                    bat """
-                    curl -X POST -H "Content-type: application/json" ^
-                    --data "{\\"text\\": \\"${successMessage.replace('"', '\\"')}\\"}" ^
-                    ${SLACK_WEBHOOK}
-                    """
+                    // Prepare the success message for Windows batch
+                    def cleanSuccessMessage = successMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
+                    bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanSuccessMessage}\\\"}\" ${SLACK_WEBHOOK}"
                     echo "✅ Success notification sent to Slack"
                 } catch (Exception e) {
                     echo "Failed to send success notification: ${e.message}"
@@ -579,11 +575,9 @@ URL: ${env.BUILD_URL}
                 """.trim()
 
                 try {
-                    bat """
-                    curl -X POST -H "Content-type: application/json" ^
-                    --data "{\\"text\\": \\"${failureMessage.replace('"', '\\"')}\\"}" ^
-                    ${SLACK_WEBHOOK}
-                    """
+                    // Prepare the failure message for Windows batch
+                    def cleanFailureMessage = failureMessage.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
+                    bat "curl -X POST -H \"Content-type: application/json\" --data \"{\\\"text\\\": \\\"${cleanFailureMessage}\\\"}\" ${SLACK_WEBHOOK}"
                     echo "🚨 Failure notification sent to Slack"
                 } catch (Exception e) {
                     echo "Failed to send failure notification: ${e.message}"
