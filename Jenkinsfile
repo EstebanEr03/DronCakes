@@ -49,50 +49,6 @@ pipeline {
         SLACK_WEBHOOK_ENABLED = "false" // Set to true when webhook is configured
     }
     
-    // Helper function for Slack notifications
-    def sendSlackNotification(String status, String message, String color = 'good') {
-        try {
-            // NOTE: Configure SLACK_WEBHOOK_URL in Jenkins environment or use credentials
-            // For now, notifications are logged to console
-            echo """
-            ===========================================
-            📱 SLACK NOTIFICATION - ${status}
-            ===========================================
-            ${message}
-            
-            Branch: ${env.CURRENT_BRANCH ?: 'main'}
-            Build: #${env.BUILD_NUMBER}
-            Commit: ${env.GIT_COMMIT_SHORT ?: 'unknown'}
-            Environment: ${env.DEPLOY_ENV ?: 'none'}
-            ===========================================
-            """
-            
-            // Uncomment and configure when Slack webhook is properly secured:
-            /*
-            withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'WEBHOOK_URL')]) {
-                def payload = """
-                {
-                    "channel": "#jenkins", 
-                    "username": "Jenkins CI/CD",
-                    "icon_emoji": ":jenkins:",
-                    "text": "*DronCakes CI/CD Pipeline - ${status}*\\n${message}"
-                }
-                """
-                
-                bat '''
-                    powershell -Command "
-                    $payload = '%s'
-                    Invoke-RestMethod -Uri '%s' -Method Post -Body $payload -ContentType 'application/json'
-                    "
-                ''' % (payload.replace("'", "''"), WEBHOOK_URL)
-            }
-            */
-            
-        } catch (Exception e) {
-            echo "Failed to send Slack notification: ${e.message}"
-        }
-    }
-    
     stages {
         stage('Branch Configuration & Checkout') {
             steps {
@@ -170,7 +126,19 @@ Approval Required: ${env.APPROVAL_REQUIRED == 'true' ? '✅' : '❌'}
 📊 Pipeline in progress... 
                     """.trim()
                     
-                    sendSlackNotification("STARTED", startMessage, "#36a64f")
+                    // Send Slack notification - STARTED
+                    echo """
+                    ===========================================
+                    📱 SLACK NOTIFICATION - STARTED
+                    ===========================================
+                    ${startMessage}
+                    
+                    Branch: ${currentBranch}
+                    Build: #${env.BUILD_NUMBER}
+                    Commit: ${env.GIT_COMMIT_SHORT}
+                    Environment: ${env.DEPLOY_ENV}
+                    ===========================================
+                    """
                 }
             }
         }
@@ -529,7 +497,19 @@ Quality Summary:
 • Security: npm audit ✓
                 """.trim()
                 
-                sendSlackNotification(status, slackMessage, color)
+                // Send Slack notification - ALWAYS
+                echo """
+                ===========================================
+                📱 SLACK NOTIFICATION - ${status}
+                ===========================================
+                ${slackMessage}
+                
+                Branch: ${env.CURRENT_BRANCH}
+                Build: #${env.BUILD_NUMBER}
+                Commit: ${env.GIT_COMMIT_SHORT}
+                Environment: ${environment}
+                ===========================================
+                """
             }
         }
         
@@ -560,7 +540,19 @@ The DronCakes pipeline completed successfully!
 🚀 Ready for production!
                 """.trim()
                 
-                sendSlackNotification("SUCCESS", successMessage, "good")
+                // Send Slack notification - SUCCESS
+                echo """
+                ===========================================
+                📱 SLACK NOTIFICATION - SUCCESS
+                ===========================================
+                ${successMessage}
+                
+                Branch: ${env.CURRENT_BRANCH}
+                Build: #${env.BUILD_NUMBER}
+                Commit: ${env.GIT_COMMIT_SHORT}
+                Environment: ${env.DEPLOY_ENV}
+                ===========================================
+                """
             }
         }
         
@@ -597,7 +589,19 @@ The DronCakes pipeline has failed and needs attention.
 @channel - Immediate attention required!
                 """.trim()
                 
-                sendSlackNotification("FAILURE", failureMessage, "danger")
+                // Send Slack notification - FAILURE
+                echo """
+                ===========================================
+                📱 SLACK NOTIFICATION - FAILURE
+                ===========================================
+                ${failureMessage}
+                
+                Branch: ${env.CURRENT_BRANCH}
+                Build: #${env.BUILD_NUMBER}
+                Commit: ${env.GIT_COMMIT_SHORT}
+                Failed Stage: ${failedStage}
+                ===========================================
+                """
             }
         }
         
