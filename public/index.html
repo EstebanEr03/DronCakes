@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚁 DronCakes - Sistema de Repostería con Drones</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🚁 DronCakes</h1>
+        <p>Sistema de Repostería con Drones Automatizado</p>
+    </header>
+
+    <main class="container">
+        <!-- Sección de Nueva Orden -->
+        <section class="card">
+            <h2>📝 Nueva Orden de Pastel</h2>
+            <form id="orderForm">
+                <div class="form-group">
+                    <label for="customer">Cliente:</label>
+                    <input type="text" id="customer" name="customer" required>
+                </div>
+                <div class="form-group">
+                    <label for="flavor">Sabor del Pastel:</label>
+                    <select id="flavor" name="flavor" required>
+                        <option value="">Selecciona un sabor</option>
+                        <option value="chocolate">🍫 Chocolate</option>
+                        <option value="vainilla">🍦 Vainilla</option>
+                        <option value="fresa">🍓 Fresa</option>
+                        <option value="red-velvet">❤️ Red Velvet</option>
+                        <option value="tres-leches">🥛 Tres Leches</option>
+                        <option value="zanahoria">🥕 Zanahoria</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">🚁 Crear Orden</button>
+            </form>
+        </section>
+
+        <!-- Estado de Drones -->
+        <section class="card">
+            <h2>🚁 Estado de Drones</h2>
+            <div id="dronesContainer">
+                <div class="loading">Cargando drones...</div>
+            </div>
+            <button id="refreshDrones" class="btn-secondary">🔄 Actualizar Drones</button>
+        </section>
+
+        <!-- Órdenes Activas -->
+        <section class="card">
+            <h2>📋 Órdenes Activas</h2>
+            <div id="ordersContainer">
+                <div class="loading">Cargando órdenes...</div>
+            </div>
+            <button id="refreshOrders" class="btn-secondary">🔄 Actualizar Órdenes</button>
+        </section>
+    </main>
+
+    <!-- Modal de Resultado -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalMessage"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>🎯 DronCakes - Entrega de pasteles automatizada con tecnología de vanguardia</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
